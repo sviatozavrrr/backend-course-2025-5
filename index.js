@@ -1,13 +1,27 @@
 const { Command } = require('commander');
+const fs = require('fs');
+const http = require('http');
+
 const program = new Command();
 
-// Описуємо аргументи командного рядка
 program
-  .requiredOption('-h, --host <host>', 'адреса сервера')
-  .requiredOption('-p, --port <port>', 'порт сервера')
-  .requiredOption('-c, --cache <path>', 'шлях до директорії кешу')
-  .parse(process.argv);
+  .requiredOption('-h, --host <host>', 'Server host')
+  .requiredOption('-p, --port <port>', 'Server port')
+  .requiredOption('-c, --cache <path>', 'Cache directory path');
 
-// Отримаємо параметри
+program.parse(process.argv);
+
 const options = program.opts();
-console.log('Параметри командного рядка:', options);
+
+if (!fs.existsSync(options.cache)) {
+  fs.mkdirSync(options.cache, { recursive: true });
+  console.log(`Created cache directory: ${options.cache}`);
+}
+
+const server = http.createServer((req, res) => {
+  res.end('Server is running!');
+});
+
+server.listen(options.port, options.host, () => {
+  console.log(`Server running at http://${options.host}:${options.port}`);
+});
