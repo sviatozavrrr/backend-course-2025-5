@@ -3,14 +3,14 @@ const fs = require('fs').promises;
 const fsSync = require('fs'); // для синхронної перевірки існування папки
 const path = require('path');
 const http = require('http');
+const superagent = require('superagent');
 
 // --- Commander.js для аргументів командного рядка ---
 const program = new Command();
 program
-  .requiredOption('-h, --host <host>', 'Server host') // велика літера
+  .requiredOption('-h, --host <host>', 'Server host')
   .requiredOption('-p, --port <port>', 'Server port')
   .requiredOption('-c, --cache <path>', 'Cache directory path');
-
 
 program.parse(process.argv);
 const options = program.opts();
@@ -34,10 +34,30 @@ const server = http.createServer(async (req, res) => {
 
   try {
     if (req.method === 'GET') {
-      // GET: отримати картинку
-      const data = await fs.readFile(filePath);
-      res.writeHead(200, { 'Content-Type': 'image/jpeg' });
-      res.end(data);
+      // GET: спочатку кеш
+      try {
+        const data = await fs.readFile(filePath);
+        res.writeHead(200, { 'Content-Type': 'image/jpeg' });
+        res.end(data);
+      } catch (err) {
+        if (err.code === 'ENOENT') {
+          // Якщо нема у кеші → запит на http.cat
+          try {
+            const response = await superagent
+              .get(`https://http.cat/${code}`)
+              .responseType('blob');
+            const buffer = Buffer.from(response.body);
+            await fs.writeFile(filePath, buffer);
+            res.writeHead(200, { 'Content-Type': 'image/jpeg' });
+            res.end(buffer);
+          } catch (err2) {
+            res.writeHead(404);
+            res.end('Not Found');
+          }
+        } else {
+          throw err;
+        }
+      }
 
     } else if (req.method === 'PUT') {
       // PUT: записати картинку
@@ -52,9 +72,18 @@ const server = http.createServer(async (req, res) => {
 
     } else if (req.method === 'DELETE') {
       // DELETE: видалити картинку
-      await fs.unlink(filePath);
-      res.writeHead(200);
-      res.end('Deleted');
+      try {
+        await fs.unlink(filePath);
+        res.writeHead(200);
+        res.end('Deleted');
+      } catch (err) {
+        if (err.code === 'ENOENT') {
+          res.writeHead(404);
+          res.end('Not Found');
+        } else {
+          throw err;
+        }
+      }
 
     } else {
       // будь-який інший метод
@@ -63,14 +92,9 @@ const server = http.createServer(async (req, res) => {
     }
 
   } catch (err) {
-    if (err.code === 'ENOENT') {
-      res.writeHead(404); // Not Found
-      res.end('Not Found');
-    } else {
-      console.error(err);
-      res.writeHead(500);
-      res.end('Internal Server Error');
-    }
+    console.error(err);
+    res.writeHead(500);
+    res.end('Internal Server Error');
   }
 });
 
@@ -78,4 +102,3 @@ const server = http.createServer(async (req, res) => {
 server.listen(port, host, () => {
   console.log(`🚀 Server running at http://${host}:${port}`);
 });
-
