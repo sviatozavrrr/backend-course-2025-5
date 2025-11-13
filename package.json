@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js -h localhost -p 3000 -c ./cache",
-  "dev": "nodemon --exec \"node index.js -h localhost -p 3000 -c ./cache\""
+    "dev": "nodemon --exec \"node index.js -h localhost -p 3000 -c ./cache\""
   },
   "repository": {
     "type": "git",
