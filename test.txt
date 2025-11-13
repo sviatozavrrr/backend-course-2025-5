@@ -1,0 +1,11 @@
+# GET картинка 200 (отримати з кешу)
+curl.exe -X GET http://localhost:3000/200 -o 200.jpg
+
+# PUT картинка 201 (завантажити у кеш)
+curl.exe -X PUT http://localhost:3000/201 --data-binary @201.jpg
+
+# DELETE картинка 200 (видалити з кешу)
+curl.exe -X DELETE http://localhost:3000/200
+
+# Метод не підтримується (повинно бути 405)
+curl.exe -X POST http://localhost:3000/200
